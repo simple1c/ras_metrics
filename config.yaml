@@ -1,0 +1,41 @@
+# Параметры подключения к кластеру/RAS (при необходимости)
+ras_host: "localhost"
+ras_port: "1545"
+
+# Учетные данные для конкретных информационных баз
+infobase_credentials:
+  # Можно указывать по ID или по имени базы
+  "a1d8ff58-df9e-4a94-8a75-517782d50357":
+    user: "jenkins-dev"
+    pwd: "******"
+
+# Список собираемых метрик и правил их сборки
+metrics:
+  - name: "infobase_summary_list"
+    help: "List of infobases in cluster"
+    # Команда, запускаемая через rac:
+    command: "infobase summary list --cluster={cluster_id}"
+    type: "gauge"
+    # Какие поля из вывода rac сделать лейблами:
+    labels:
+      - name
+      - descr
+      - infobase
+    # Фиксированное значение (база существует = 1)
+    value_field: null
+    default_value: 1
+
+  - name: "infobase_info"
+    help: "Detailed infobase settings and flags"
+    # Шаблон команды. {infobase} и credentials подставятся автоматически
+    command: "infobase info --cluster={cluster_id} --infobase={infobase_id}"
+    type: "gauge"
+    requires_infobase_auth: true
+    # Метрика будет браться из ключевых полей с типом boolean (on/off -> 1/0)
+    split_metrics:
+      - field: "sessions-deny"
+        metric_suffix: "sessions_deny"
+        labels: ["name"]
+      - field: "scheduled-jobs-deny"
+        metric_suffix: "scheduled_jobs_deny"
+        labels: ["name"]

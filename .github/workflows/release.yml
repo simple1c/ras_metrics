@@ -1,0 +1,60 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch: # Возможность запустить сборку вручную из UI
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Extract Tag/Version
+        id: get_version
+        run: |
+          # Проверяем, запущен ли workflow по тегу или вручную
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION="v0.0.0-dev"
+          fi
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Inject version into code
+        run: |
+          # Простая подстановка версии из тега в exporter.py
+          sed -i 's/__version__ = ".*"/__version__ = "${{ env.VERSION }}"/' exporter.py
+
+      - name: Build binary with PyInstaller
+        run: |
+          pyinstaller --onefile --name rac_exporter exporter.py
+
+      - name: Test binary
+        run: |
+          ./dist/rac_exporter --version
+
+      - name: Create GitHub Release and Upload Asset
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: dist/rac_exporter
+          name: Release ${{ env.VERSION }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
