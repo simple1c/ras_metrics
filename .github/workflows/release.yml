@@ -4,12 +4,15 @@ on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch: # Возможность запустить сборку вручную из UI
+  workflow_dispatch:
+
+# 🟢 ДОБАВЬ ЭТИ СТРОКИ: явно выдаем права на запись
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-22.04
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -27,7 +30,6 @@ jobs:
       - name: Extract Tag/Version
         id: get_version
         run: |
-          # Проверяем, запущен ли workflow по тегу или вручную
           if [[ $GITHUB_REF == refs/tags/* ]]; then
             VERSION=${GITHUB_REF#refs/tags/}
           else
@@ -37,7 +39,6 @@ jobs:
 
       - name: Inject version into code
         run: |
-          # Простая подстановка версии из тега в exporter.py
           sed -i 's/__version__ = ".*"/__version__ = "${{ env.VERSION }}"/' exporter.py
 
       - name: Build binary with PyInstaller
